@@ -53,7 +53,7 @@ jobs:
             cssutils==1.0.2 \
             html5lib==1.1 \
             webencodings==0.5.1 \
-            soupsieve==2.3.1 # Added more common ones from Loconotion's typical dependencies
+            soupsieve==2.3.1
 
           # After installing our explicitly pinned versions, install any remaining
           # dependencies that Loconotion's own requirements.txt might list.
@@ -79,10 +79,12 @@ jobs:
           # Configure Git user details for the commit that will be made on the 'gh-pages' branch.
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Execute the 'deploy.sh' script (provided by the Loconotion template).
-          # It handles pushing the 'dist' folder to 'gh-pages'.
+          # Execute the 'deploy.sh' script (located directly in the 'pages_repo' root).
+          # This script handles the Git operations to push the 'dist' folder to 'gh-pages'.
+          # We pass environment variables to configure the deploy.sh script.
+          # GIT_DEPLOY_DIR=dist because Loconotion outputs to 'dist' inside 'pages_repo'.
           GIT_DEPLOY_DIR=dist \
           GIT_DEPLOY_BRANCH=gh-pages \
-          GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ../loconotion/deploy.sh
-        # This step's 'working-directory' is 'pages_repo' because that's where the 'dist' folder is.
+          GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ./deploy.sh
+        # This step's 'working-directory' is 'pages_repo', so './deploy.sh' correctly points to it.
         working-directory: pages_repo
