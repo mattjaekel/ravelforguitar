@@ -23,7 +23,10 @@ jobs:
       - name: Download and install chromedriver
         run: sudo apt install chromium-chromedriver
       - name: Install Loconotion dependencies
-        run: pip install -r loconotion/requirements.txt
+        run: |
+          python3 -m pip install --upgrade pip  
+          pip install beautifulsoup4 toml
+          pip install "selenium>=4.0.0,<5.0.0" requests urllib3
       - name: Run Loconotion
         run: |
           python3 loconotion/loconotion --chromedriver chromedriver "pages_repo/site.toml"
