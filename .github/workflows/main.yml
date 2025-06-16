@@ -64,14 +64,17 @@ jobs:
           pip install --no-deps -r loconotion/requirements.txt || true
 
       # Step 4: Run the Loconotion script to generate your static website.
+      # This is where we change the working directory to ensure 'dist' is created correctly.
       - name: Run Loconotion
+        # CRUCIAL CHANGES IN THIS STEP'S RUN AND WORKING-DIRECTORY:
         run: |
-          # This command and path are crucial and have been retained as they seem to be
-          # the intended way to execute Loconotion from its checked-out directory.
-          python3 loconotion/loconotion --chromedriver chromedriver "pages_repo/site.toml"
-        # The 'working-directory' is set to the root of the runner's workspace,
-        # so 'loconotion/loconotion' can be resolved correctly relative to it.
-        working-directory: ${{ github.workspace }}
+          # The Loconotion command now needs paths relative to 'pages_repo'.
+          # Loconotion's script is at '../loconotion/loconotion' (up one dir from pages_repo, then into loconotion).
+          # site.toml is just 'site.toml' because the working directory is now 'pages_repo'.
+          python3 ../loconotion/loconotion --chromedriver chromedriver "site.toml"
+        # Set the working directory for Loconotion to 'pages_repo'.
+        # This will make Loconotion create its 'dist' output folder directly INSIDE 'pages_repo'.
+        working-directory: pages_repo
 
       # Step 5: Push the newly generated static website files to your 'gh-pages' branch.
       - name: Push to GitHub pages
@@ -82,7 +85,7 @@ jobs:
           # Execute the 'deploy.sh' script (located directly in the 'pages_repo' root).
           # This script handles the Git operations to push the 'dist' folder to 'gh-pages'.
           # We pass environment variables to configure the deploy.sh script.
-          # GIT_DEPLOY_DIR=dist because Loconotion outputs to 'dist' inside 'pages_repo'.
+          # GIT_DEPLOY_DIR=dist is correct, as 'dist' will now be inside 'pages_repo'.
           GIT_DEPLOY_DIR=dist \
           GIT_DEPLOY_BRANCH=gh-pages \
           GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ./deploy.sh
