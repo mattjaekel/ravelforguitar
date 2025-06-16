@@ -22,9 +22,10 @@ jobs:
           path: pages_repo
       - name: Install Loconotion dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          pip install beautifulsoup4 toml
-          pip install "selenium>=4.0.0,<5.0.0" requests urllib3 chromedriver_autoinstaller
+          python3 -m pip install --upgrade pip  # Always upgrade pip first
+          # Install ALL dependencies from Loconotion's own requirements.txt
+          # AND explicitly add chromedriver_autoinstaller which Loconotion now uses internally
+          pip install -r loconotion/requirements.txt chromedriver_autoinstaller
       - name: Run Loconotion
         run: |
           python3 loconotion/loconotion --chromedriver chromedriver "pages_repo/site.toml"
