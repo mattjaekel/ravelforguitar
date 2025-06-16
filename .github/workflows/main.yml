@@ -1,72 +1,81 @@
 name: Publish Notion website to GitHub Pages
 
 on:
-  # This workflow will only run when manually triggered from the GitHub Actions tab.
+  # This workflow will only run when you manually trigger it from the GitHub Actions tab.
   workflow_dispatch:
 
 permissions:
-  # Allows the workflow to write to your repository, necessary for gh-pages.
+  # This grants the workflow permission to write to your repository, which is essential for updating GitHub Pages.
   contents: write
 
 jobs:
   deploy:
-    # Runs the job on the latest Ubuntu environment provided by GitHub Actions.
+    # The job will run on the latest Ubuntu environment provided by GitHub Actions.
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the Loconotion repository itself.
-      # This provides the loconotion.py script and its requirements.txt.
+      # Step 1: Checkout the 'leoncvlt/loconotion' repository.
+      # This provides the 'loconotion.py' script and its specific 'requirements.txt' file.
       - name: Checkout loconotion
         uses: actions/checkout@v3
         with:
           repository: leoncvlt/loconotion
-          path: loconotion # Clones Loconotion into a 'loconotion' directory
+          path: loconotion # Clones Loconotion into a directory named 'loconotion'
 
-      # Step 2: Checkout your actual website repository (ravelforguitar).
-      # This gives the workflow access to your site.toml and where to put output.
+      # Step 2: Checkout your own 'ravelforguitar' repository.
+      # This gives the workflow access to your 'site.toml' configuration file
+      # and is where the generated static site files will be created.
       - name: Checkout this repo
         uses: actions/checkout@v3
         with:
-          path: pages_repo # Clones your repo into a 'pages_repo' directory
+          path: pages_repo # Clones your repo into a directory named 'pages_repo'
 
-      # Step 3: Install all necessary Python dependencies.
-      # This is the crucial step where we ensure Loconotion has everything it needs.
+      # Step 3: Install all necessary Python dependencies for Loconotion.
+      # This is the most critical part where we ensure all libraries are correctly installed.
       - name: Install Loconotion dependencies
         run: |
-          # Upgrade pip to the latest version first. This can help with dependency resolution.
+          # Always upgrade pip (Python's package installer) to its latest version first.
+          # This helps with better dependency resolution.
           python3 -m pip install --upgrade pip
 
-          # Install all dependencies specified in Loconotion's own requirements.txt.
-          # This will install 'chromedriver-autoinstaller==0.2.0' (or whatever version it specifies).
+          # Install all base dependencies listed in Loconotion's own requirements.txt file.
+          # This will include packages like 'beautifulsoup4', 'selenium', 'toml', etc.,
+          # and also 'chromedriver-autoinstaller' at the version specified by Loconotion.
           pip install -r loconotion/requirements.txt
 
-          # Crucially, force an upgrade of chromedriver-autoinstaller.
-          # This overrides the older version from Loconotion's requirements.txt
-          # with a newer, more compatible one (0.6.4), resolving conflicts.
-          # We don't need to specify a hash here as it's a direct 'pip install' command.
+          # Force an upgrade of 'chromedriver-autoinstaller' to a newer, known-good version (0.6.4).
+          # This resolves the conflict where Loconotion's requirements might specify an older version
+          # that's incompatible with the build environment or other parts of Loconotion.
+          # We use '--upgrade' to ensure it replaces any older version that was just installed.
           pip install --upgrade chromedriver_autoinstaller==0.6.4
 
-      # Step 4: Run Loconotion to generate the static website files.
-      # It reads your site.toml from 'pages_repo' and outputs to a 'dist' folder.
+      # Step 4: Run the Loconotion script to generate your static website.
+      # It will read your 'site.toml' and scrape your Notion page(s).
       - name: Run Loconotion
         run: |
-          # The --chromedriver chromedriver flag might still be necessary for the specific
-          # version of Loconotion being used, even with chromedriver_autoinstaller.
-          # Chromedriver_autoinstaller ensures the 'chromedriver' executable is available.
-          python3 loconotion/loconotion --chromedriver chromedriver "pages_repo/site.toml"
-        # Ensure this step runs from the 'loconotion' directory to find the script correctly.
-        working-directory: loconotion # Added/Confirmed this working directory
+          # Execute the 'loconotion.py' script.
+          # We explicitly tell it to use 'chromedriver', as 'chromedriver_autoinstaller'
+          # will ensure the correct executable is available in the system's PATH.
+          # The "pages_repo/site.toml" argument tells Loconotion where to find your site configuration.
+          python3 loconotion.py --chromedriver chromedriver "pages_repo/site.toml"
+        # The 'working-directory' is set to 'loconotion' so the 'loconotion.py' script can be found directly.
+        working-directory: loconotion
 
-      # Step 5: Push the generated static files to the gh-pages branch.
-      # This uses the deploy.sh script provided by the template to handle the Git operations.
+      # Step 5: Push the newly generated static website files to your 'gh-pages' branch.
+      # This makes your website live on GitHub Pages.
       - name: Push to GitHub pages
         run: |
-          # Configure Git user for the commit
+          # Configure Git user details for the commit that will be made on the 'gh-pages' branch.
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Execute the deploy.sh script with necessary environment variables
-          # GIT_DEPLOY_DIR points to where Loconotion outputs the site within 'pages_repo'.
+          # Execute the 'deploy.sh' script (provided by the Loconotion template).
+          # This script handles the Git operations to push the 'dist' folder to 'gh-pages'.
+          # We pass environment variables to configure the deploy.sh script:
+          # - GIT_DEPLOY_DIR: Specifies that the generated files are in the 'dist' folder.
+          # - GIT_DEPLOY_BRANCH: Sets the target branch to 'gh-pages'.
+          # - GIT_DEPLOY_REPO: Provides the repository URL with the necessary token for authentication.
           GIT_DEPLOY_DIR=dist \
           GIT_DEPLOY_BRANCH=gh-pages \
           GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ../loconotion/deploy.sh
-        # This step needs to run from the 'pages_repo' to find the generated 'dist' folder.
+        # This step's 'working-directory' is 'pages_repo' because that's where the 'dist' folder (containing
+        # your generated site) is located, and where the deploy.sh script will operate from relative to its path.
         working-directory: pages_repo
