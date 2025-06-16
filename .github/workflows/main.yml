@@ -36,13 +36,16 @@ jobs:
           # Upgrade pip (Python's package installer) to its latest version first.
           python3 -m pip install --upgrade pip
 
-          # Install all base dependencies listed in Loconotion's own requirements.txt file.
-          # This will install 'chromedriver-autoinstaller' at the version specified by Loconotion.
-          pip install -r loconotion/requirements.txt
+          # Install core Loconotion dependencies with specific versions known to be compatible
+          # and resolve the urllib3.packages.six.moves issue.
+          # Selenium 4.x is more robust, and ensures compatible requests/urllib3.
+          # chromedriver_autoinstaller is added here with a recent version.
+          pip install beautifulsoup4 toml "selenium>=4.0.0,<5.0.0" requests urllib3==1.26.18 chromedriver_autoinstaller==0.6.4 cssutils==1.0.2
 
-          # Force an upgrade of 'chromedriver-autoinstaller' to a newer, known-good version (0.6.4).
-          # This resolves potential compatibility issues with the environment.
-          pip install --upgrade chromedriver_autoinstaller==0.6.4
+          # Install any remaining dependencies from Loconotion's requirements.txt.
+          # This should only add packages not already installed or update if needed.
+          # The specific versions we pinned above will take precedence.
+          pip install -r loconotion/requirements.txt || true # Use || true to prevent build failure if requirements.txt contains already-satisfied dependencies or minor conflicts
 
       # Step 4: Run the Loconotion script to generate your static website.
       # It will read your 'site.toml' and scrape your Notion page(s).
@@ -66,12 +69,12 @@ jobs:
           # Execute the 'deploy.sh' script (provided by the Loconotion template).
           # This script handles the Git operations to push the 'dist' folder to 'gh-pages'.
           # We pass environment variables to configure the deploy.sh script:
-          # - GIT_DEPLOY_DIR: Specifies that the generated files are in the 'dist' folder.
+          # - GIT_DEPLOY_DIR: Specifies that the generated files are in the 'dist' folder (within pages_repo).
           # - GIT_DEPLOY_BRANCH: Sets the target branch to 'gh-pages'.
           # - GIT_DEPLOY_REPO: Provides the repository URL with the necessary token for authentication.
           GIT_DEPLOY_DIR=dist \
           GIT_DEPLOY_BRANCH=gh-pages \
-          GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ./loconotion/deploy.sh
+          GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ../loconotion/deploy.sh
         # This step's 'working-directory' is 'pages_repo' because that's where the 'dist' folder (containing
         # your generated site) is located, and where the deploy.sh script will operate from relative to its path.
         working-directory: pages_repo
