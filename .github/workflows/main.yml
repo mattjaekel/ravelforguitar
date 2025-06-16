@@ -13,38 +13,37 @@ jobs:
     # The job will run on the latest Ubuntu environment provided by GitHub Actions.
     runs-on: ubuntu-latest
     steps:
+      # --- NEW STEP: Explicitly set up Python 3.10 ---
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' # Using a specific Python version for better consistency and compatibility
+
       # Step 1: Checkout the 'leoncvlt/loconotion' repository.
-      # This provides the 'loconotion.py' script and its specific 'requirements.txt' file.
       - name: Checkout loconotion
         uses: actions/checkout@v3
         with:
           repository: leoncvlt/loconotion
-          path: loconotion # Clones Loconotion into a directory named 'loconotion'
+          path: loconotion
 
       # Step 2: Checkout your own 'ravelforguitar' repository.
-      # This gives the workflow access to your 'site.toml' configuration file
-      # and is where the generated static site files will be created.
       - name: Checkout this repo
         uses: actions/checkout@v3
         with:
-          path: pages_repo # Clones your repo into a directory named 'pages_repo'
+          path: pages_repo
 
       # Step 3: Install all necessary Python dependencies for Loconotion.
-      # This is the most critical part where we ensure all libraries are correctly installed.
+      # This step is the most critical for resolving the 'ModuleNotFoundError'.
       - name: Install Loconotion dependencies
         run: |
           # Upgrade pip (Python's package installer) to its latest version first.
-          # This helps with better dependency resolution in complex environments.
           python3 -m pip install --upgrade pip
 
-          # Install all known Loconotion dependencies with versions that are known to be
-          # compatible with each other and resolve the 'urllib3.packages.six.moves' error.
-          # We're specifically pinning 'urllib3' to a version that's compatible with 'requests'
-          # and avoids the 'six.moves' issue on typical GitHub Actions Python environments.
-          # 'selenium' v4+ is generally more stable.
-          # 'chromedriver_autoinstaller' is essential for auto-downloading the correct ChromeDriver.
-          # 'cssutils' is another dependency that has popped up.
-          pip install \
+          # Install ALL known direct and indirect dependencies of Loconotion.
+          # We're specifically pinning problematic libraries (urllib3, requests, selenium)
+          # to versions known to be compatible with each other and Python 3.10,
+          # and using --no-cache-dir and --force-reinstall for a clean state.
+          pip install --no-cache-dir --force-reinstall \
             beautifulsoup4 \
             toml \
             selenium==4.10.0 \
@@ -56,40 +55,34 @@ jobs:
             webencodings==0.5.1 \
             soupsieve==2.3.1 # Added more common ones from Loconotion's typical dependencies
 
-          # While the above should cover most, we still run Loconotion's own requirements.txt
-          # to ensure any less common or very specific dependencies it might need are also installed.
-          # The '|| true' ensures the build doesn't fail if there are minor, non-critical conflicts
-          # with already installed packages.
-          pip install -r loconotion/requirements.txt || true
+          # After installing our explicitly pinned versions, install any remaining
+          # dependencies that Loconotion's own requirements.txt might list.
+          # '--no-deps' ensures it doesn't re-pull dependencies that we've already
+          # specifically installed, avoiding conflicts.
+          # '|| true' prevents the workflow from failing if there are minor conflicts
+          # or already-satisfied requirements.
+          pip install --no-deps -r loconotion/requirements.txt || true
 
       # Step 4: Run the Loconotion script to generate your static website.
-      # It will read your 'site.toml' and scrape your Notion page(s).
       - name: Run Loconotion
         run: |
-          # This path and command appears to be what the 'leoncvlt/loconotion' project expects
-          # when run as a sub-module or specific entry point.
-          # The --chromedriver chromedriver flag and "pages_repo/site.toml" arguments are kept.
+          # This command and path are crucial and have been retained as they seem to be
+          # the intended way to execute Loconotion from its checked-out directory.
           python3 loconotion/loconotion --chromedriver chromedriver "pages_repo/site.toml"
         # The 'working-directory' is set to the root of the runner's workspace,
         # so 'loconotion/loconotion' can be resolved correctly relative to it.
         working-directory: ${{ github.workspace }}
 
       # Step 5: Push the newly generated static website files to your 'gh-pages' branch.
-      # This makes your website live on GitHub Pages.
       - name: Push to GitHub pages
         run: |
           # Configure Git user details for the commit that will be made on the 'gh-pages' branch.
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Execute the 'deploy.sh' script (provided by the Loconotion template).
-          # This script handles the Git operations to push the 'dist' folder to 'gh-pages'.
-          # We pass environment variables to configure the deploy.sh script:
-          # - GIT_DEPLOY_DIR: Specifies that the generated files are in the 'dist' folder (within pages_repo).
-          # - GIT_DEPLOY_BRANCH: Sets the target branch to 'gh-pages'.
-          # - GIT_DEPLOY_REPO: Provides the repository URL with the necessary token for authentication.
+          # It handles pushing the 'dist' folder to 'gh-pages'.
           GIT_DEPLOY_DIR=dist \
           GIT_DEPLOY_BRANCH=gh-pages \
           GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ../loconotion/deploy.sh
-        # This step's 'working-directory' is 'pages_repo' because that's where the 'dist' folder (containing
-        # your generated site) is located, and where the deploy.sh script will operate from relative to its path.
+        # This step's 'working-directory' is 'pages_repo' because that's where the 'dist' folder is.
         working-directory: pages_repo
