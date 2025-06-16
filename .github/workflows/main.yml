@@ -23,9 +23,9 @@ jobs:
       - name: Install Loconotion dependencies
         run: |
           python3 -m pip install --upgrade pip  # Always upgrade pip first
-          # Install ALL dependencies from Loconotion's own requirements.txt
-          # AND explicitly add chromedriver_autoinstaller which Loconotion now uses internally
-          pip install -r loconotion/requirements.txt chromedriver_autoinstaller
+          echo "chromedriver_autoinstaller==0.6.4 \\" > build_requirements.txt
+          echo "    --hash=sha256:a5b536f0b0add145c371b5282e881a687601899f2d27fae5d0595bc02026b67c" >> build_requirements.txt
+          pip install -r loconotion/requirements.txt -r build_requirements.txt
       - name: Run Loconotion
         run: |
           python3 loconotion/loconotion --chromedriver chromedriver "pages_repo/site.toml"
