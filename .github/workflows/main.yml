@@ -34,18 +34,33 @@ jobs:
       - name: Install Loconotion dependencies
         run: |
           # Upgrade pip (Python's package installer) to its latest version first.
+          # This helps with better dependency resolution in complex environments.
           python3 -m pip install --upgrade pip
 
-          # Install core Loconotion dependencies with specific versions known to be compatible
-          # and resolve the urllib3.packages.six.moves issue.
-          # Selenium 4.x is more robust, and ensures compatible requests/urllib3.
-          # chromedriver_autoinstaller is added here with a recent version.
-          pip install beautifulsoup4 toml "selenium>=4.0.0,<5.0.0" requests urllib3==1.26.18 chromedriver_autoinstaller==0.6.4 cssutils==1.0.2
+          # Install all known Loconotion dependencies with versions that are known to be
+          # compatible with each other and resolve the 'urllib3.packages.six.moves' error.
+          # We're specifically pinning 'urllib3' to a version that's compatible with 'requests'
+          # and avoids the 'six.moves' issue on typical GitHub Actions Python environments.
+          # 'selenium' v4+ is generally more stable.
+          # 'chromedriver_autoinstaller' is essential for auto-downloading the correct ChromeDriver.
+          # 'cssutils' is another dependency that has popped up.
+          pip install \
+            beautifulsoup4 \
+            toml \
+            selenium==4.10.0 \
+            requests==2.28.1 \
+            urllib3==1.26.18 \
+            chromedriver_autoinstaller==0.6.4 \
+            cssutils==1.0.2 \
+            html5lib==1.1 \
+            webencodings==0.5.1 \
+            soupsieve==2.3.1 # Added more common ones from Loconotion's typical dependencies
 
-          # Install any remaining dependencies from Loconotion's requirements.txt.
-          # This should only add packages not already installed or update if needed.
-          # The specific versions we pinned above will take precedence.
-          pip install -r loconotion/requirements.txt || true # Use || true to prevent build failure if requirements.txt contains already-satisfied dependencies or minor conflicts
+          # While the above should cover most, we still run Loconotion's own requirements.txt
+          # to ensure any less common or very specific dependencies it might need are also installed.
+          # The '|| true' ensures the build doesn't fail if there are minor, non-critical conflicts
+          # with already installed packages.
+          pip install -r loconotion/requirements.txt || true
 
       # Step 4: Run the Loconotion script to generate your static website.
       # It will read your 'site.toml' and scrape your Notion page(s).
