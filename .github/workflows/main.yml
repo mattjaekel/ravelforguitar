@@ -77,16 +77,15 @@ jobs:
         working-directory: pages_repo
 
       # Step 5: Push the newly generated static website files to your 'gh-pages' branch.
+      # Step 5: Push the newly generated static website files to your 'gh-pages' branch.
       - name: Push to GitHub pages
         run: |
           # Configure Git user details for the commit that will be made on the 'gh-pages' branch.
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Execute the 'deploy.sh' script (located directly in the 'pages_repo' root).
-          # This script handles the Git operations to push the 'dist' folder to 'gh-pages'.
-          # We pass environment variables to configure the deploy.sh script.
-          # GIT_DEPLOY_DIR=dist is correct, as 'dist' will now be inside 'pages_repo'.
-          GIT_DEPLOY_DIR=dist \
+          # Execute the 'deploy.sh' script.
+          # CRITICAL FIX: The GIT_DEPLOY_DIR needs to point to the 'site' subdirectory within 'dist'.
+          GIT_DEPLOY_DIR=dist/site \
           GIT_DEPLOY_BRANCH=gh-pages \
           GIT_DEPLOY_REPO="https://${{ github.token }}@github.com/${{ github.repository }}.git" ./deploy.sh
         # This step's 'working-directory' is 'pages_repo', so './deploy.sh' correctly points to it.
